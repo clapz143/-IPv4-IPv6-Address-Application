@@ -2,20 +2,25 @@ import requests
 import argparse
 import socket
 import platform
-from rich.console import Console
-from rich.table import Table
 import time
 
 def get_ip_info(output_json=False):
-    api_url = "https://ipapi.co/json/"
-    
+    api_url = "https://ipapi.co/json/"  # No API key
+
     try:
         response = requests.get(api_url, timeout=10)
 
-        if response.status_code == 429:  # Too many requests
-            print("Too many requests (HTTP 429). Retrying after a delay...")
+        # Handle HTTP 429 (Too Many Requests)
+        if response.status_code == 429:
+            print("Too many requests (HTTP 429). Retrying after 60 seconds...")
             time.sleep(60)  # Wait for 60 seconds before retrying
             response = requests.get(api_url, timeout=10)
+
+        # Handle HTTP 403 (Forbidden)
+        if response.status_code == 403:
+            print("Access forbidden (HTTP 403). The free plan may have been blocked for your IP.")
+            print("Consider using a VPN or switching to an API key for reliable access.")
+            return
 
         if response.status_code != 200:
             print(f"Error: Received HTTP {response.status_code} from API.")
@@ -30,7 +35,6 @@ def get_ip_info(output_json=False):
         city = data.get('city', 'N/A')
         isp = data.get('org', 'N/A')
         asn = data.get('asn', 'N/A')
-        network = data.get('network', 'N/A')
 
         if output_json:
             print(data)
@@ -46,7 +50,6 @@ def get_ip_info(output_json=False):
             table.add_row("City", city)
             table.add_row("ISP", isp)
             table.add_row("ASN", asn)
-            table.add_row("Network", network)
 
             console.print(table)
 
@@ -88,7 +91,7 @@ def network_info():
         print(f"Error retrieving network information: {e}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Fetch public IP and perform DNS lookups.")
+    parser = argparse.ArgumentParser(description="Fetch public IP, perform DNS lookups, and display network information.")
     parser.add_argument('--json', action='store_true', help="Output results in JSON format")
     parser.add_argument('--dns', type=str, help="Perform a DNS lookup for a domain")
     parser.add_argument('--network', action='store_true', help="Display detailed network information")
